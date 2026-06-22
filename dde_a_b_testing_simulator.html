@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DDE A/B Test Experiment Simulator</title>
+  
+  <style>
+    :root {
+      --primary: #0b57d0;
+      --on-primary: #fff;
+      --surface: #fff;
+      --surface-container: #f0f4f9;
+      --surface-container-high: #e9ebf0;
+      --on-surface-default: #1b1c1d;
+      --on-surface-de-emphasis: #444746;
+      --stroke-default: #dcdfe5;
+      --success: #146c2e;
+      --success-surface: #c4eed0;
+      --error: #b3261e;
+      --error-surface: #ffcdd2;
+      --ff-sans: "Google Sans", "Roboto", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #a8c7fa;
+        --on-primary: #062e6f;
+        --surface: #101218;
+        --surface-container: #282a2c;
+        --surface-container-high: #2a2b36;
+        --on-surface-default: #fff;
+        --on-surface-de-emphasis: #c4c7c5;
+        --stroke-default: #2d2f38;
+        --success: #6dd58c;
+        --success-surface: #1f3025;
+        --error: #f2b8b5;
+        --error-surface: #381a21;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--ff-sans);
+      background-color: var(--surface);
+      color: var(--on-surface-default);
+      padding: 20px;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--surface-container);
+      border: 1px solid var(--stroke-default);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+
+    p.intro {
+      font-size: 14px;
+      color: var(--on-surface-de-emphasis);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .control-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      background: var(--surface);
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke-default);
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .control-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--on-surface-de-emphasis);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: var(--surface-container-high);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+    }
+
+    .val-display {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--on-surface-default);
+      align-self: flex-end;
+    }
+
+    .simulate-btn {
+      grid-column: 1 / -1;
+      background-color: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .simulate-btn:hover {
+      opacity: 0.9;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--stroke-default);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .card h3 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: var(--on-surface-de-emphasis);
+      border-bottom: 1px solid var(--stroke-default);
+      padding-bottom: 6px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .metric-val {
+      font-weight: bold;
+    }
+
+    .verdict-card {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .verdict-launch {
+      background-color: var(--success-surface);
+      color: var(--success);
+      border: 1px dashed var(--success);
+    }
+
+    .verdict-hold {
+      background-color: var(--error-surface);
+      color: var(--error);
+      border: 1px dashed var(--error);
+    }
+
+    .math-panel {
+      font-size: 12px;
+      color: var(--on-surface-de-emphasis);
+      line-height: 1.6;
+      background: var(--surface);
+      border: 1px solid var(--stroke-default);
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .math-panel code {
+      background: var(--surface-container-high);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🧪 DDE A/B Test Experiment Simulator</h1>
+  <p class="intro">
+    DDE is testing a <strong>Redesigned One-Tap Checkout Flow</strong> (Variant B) against the <strong>Legacy Multi-Step Checkout Flow</strong> (Variant A). Use this simulator to change sample sizes and conversion uplifts to see if the statistical significance allows a feature launch!
+  </p>
+
+  <div class="control-panel">
+    <div class="control-group">
+      <div style="display:flex; justify-content:space-between;">
+        <label for="sampleSize">Sample Size (Users per Variant)</label>
+        <span class="val-display" id="sampleDisplay">10,000</span>
+      </div>
+      <input type="range" id="sampleSize" min="1000" max="50000" step="1000" value="10000">
+    </div>
+
+    <div class="control-group">
+      <div style="display:flex; justify-content:space-between;">
+        <label for="baselineConv">Baseline Conversion Rate (Variant A)</label>
+        <span class="val-display" id="baselineDisplay">12.0%</span>
+      </div>
+      <input type="range" id="baselineConv" min="5" max="30" step="0.5" value="12">
+    </div>
+
+    <div class="control-group" style="grid-column: 1 / -1;">
+      <div style="display:flex; justify-content:space-between;">
+        <label for="observedConvB">Observed Conversion Rate (Variant B)</label>
+        <span class="val-display" id="observedDisplay">13.5%</span>
+      </div>
+      <input type="range" id="observedConvB" min="5" max="35" step="0.1" value="13.5">
+    </div>
+
+    <button class="simulate-btn" id="simBtn">Run Statistical significance Simulation</button>
+  </div>
+
+  <div class="results-grid">
+    <div class="card">
+      <h3>Variant A (Control)</h3>
+      <div class="metric-row">
+        <span>Total Visitors:</span>
+        <span class="metric-val" id="ctrlVisitors">10,000</span>
+      </div>
+      <div class="metric-row">
+        <span>Conversions:</span>
+        <span class="metric-val" id="ctrlConversions">1,200</span>
+      </div>
+      <div class="metric-row">
+        <span>Conversion Rate:</span>
+        <span class="metric-val" id="ctrlRate">12.00%</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Variant B (Treatment)</h3>
+      <div class="metric-row">
+        <span>Total Visitors:</span>
+        <span class="metric-val" id="treatVisitors">10,000</span>
+      </div>
+      <div class="metric-row">
+        <span>Conversions:</span>
+        <span class="metric-val" id="treatConversions">1,350</span>
+      </div>
+      <div class="metric-row">
+        <span>Conversion Rate:</span>
+        <span class="metric-val" id="treatRate">13.50%</span>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: 1 / -1;">
+      <h3>Experiment Core Stats</h3>
+      <div class="metric-row">
+        <span>Observed Conversion Difference (Uplift):</span>
+        <span class="metric-val" id="upliftVal">+1.50%</span>
+      </div>
+      <div class="metric-row">
+        <span>Standard Error (pooled):</span>
+        <span class="metric-val" id="seVal">0.0047</span>
+      </div>
+      <div class="metric-row">
+        <span>Z-Score:</span>
+        <span class="metric-val" id="zVal">3.17</span>
+      </div>
+      <div class="metric-row" style="border-top:1px dashed var(--stroke-default); padding-top:6px; margin-top:6px;">
+        <strong>Calculated p-value:</strong>
+        <strong id="pVal" style="color:var(--primary)">0.0015</strong>
+      </div>
+    </div>
+
+    <div class="verdict-card verdict-launch" id="verdict">
+      🎉 Statistically Significant! Launch Variant B (p-value ≤ 0.05)
+    </div>
+  </div>
+
+  <div class="math-panel">
+    <strong>💡 The BA Formula Corner:</strong><br>
+    The standard error is calculated as <code>SE = √( p_A(1 - p_A)/n_A + p_B(1 - p_B)/n_B )</code>.<br>
+    The Z-Score is calculated as <code>Z = (p_B - p_A) / SE</code>.<br>
+    Our $p$-value represents the probability that this conversion difference could occur purely due to background noise. If $p \le 0.05$, we reject the Null Hypothesis and confidently rollout the update.
+  </div>
+</div>
+
+<script>
+  // UI Selectors
+  const sampleSlider = document.getElementById('sampleSize');
+  const sampleDisplay = document.getElementById('sampleDisplay');
+  const baselineSlider = document.getElementById('baselineConv');
+  const baselineDisplay = document.getElementById('baselineDisplay');
+  const observedSlider = document.getElementById('observedConvB');
+  const observedDisplay = document.getElementById('observedDisplay');
+  
+  const ctrlVisitors = document.getElementById('ctrlVisitors');
+  const ctrlConversions = document.getElementById('ctrlConversions');
+  const ctrlRate = document.getElementById('ctrlRate');
+  
+  const treatVisitors = document.getElementById('treatVisitors');
+  const treatConversions = document.getElementById('treatConversions');
+  const treatRate = document.getElementById('treatRate');
+  
+  const upliftVal = document.getElementById('upliftVal');
+  const seVal = document.getElementById('seVal');
+  const zVal = document.getElementById('zVal');
+  const pVal = document.getElementById('pVal');
+  const verdict = document.getElementById('verdict');
+
+  const simBtn = document.getElementById('simBtn');
+
+  // Math Helper: Standard Normal Cumulative Distribution Function (Approximation)
+  function normalCDF(x) {
+    const b1 =  0.319381530;
+    const b2 = -0.356563782;
+    const b3 =  1.781477937;
+    const b4 = -1.821255978;
+    const b5 =  1.330274429;
+    const p  =  0.2316419;
+    const c2 =  0.39894228;
+
+    if (x >= 0.0) {
+      let t = 1.0 / (1.0 + p * x);
+      return (1.0 - c2 * Math.exp(-x * x / 2.0) * t *
+        (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1));
+    } else {
+      let t = 1.0 / (1.0 - p * x);
+      return (c2 * Math.exp(-x * x / 2.0) * t *
+        (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1));
+    }
+  }
+
+  function updateValues() {
+    const N = parseInt(sampleSlider.value);
+    const pA = parseFloat(baselineSlider.value) / 100;
+    const pB = parseFloat(observedSlider.value) / 100;
+
+    sampleDisplay.textContent = N.toLocaleString();
+    baselineDisplay.textContent = (pA * 100).toFixed(1) + '%';
+    observedDisplay.textContent = (pB * 100).toFixed(1) + '%';
+
+    // Conversions
+    const convA = Math.round(N * pA);
+    const convB = Math.round(N * pB);
+
+    ctrlVisitors.textContent = N.toLocaleString();
+    ctrlConversions.textContent = convA.toLocaleString();
+    ctrlRate.textContent = (pA * 100).toFixed(2) + '%';
+
+    treatVisitors.textContent = N.toLocaleString();
+    treatConversions.textContent = convB.toLocaleString();
+    treatRate.textContent = (pB * 100).toFixed(2) + '%';
+
+    // Calculation Logic
+    const diff = pB - pA;
+    const se = Math.sqrt((pA * (1 - pA) / N) + (pB * (1 - pB) / N));
+    
+    let z = 0;
+    if (se > 0) {
+      z = diff / se;
+    }
+
+    // Two-tailed p-value calculation
+    let pValue = 2 * (1 - normalCDF(Math.abs(z)));
+
+    upliftVal.textContent = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
+    seVal.textContent = se.toFixed(5);
+    zVal.textContent = z.toFixed(2);
+    pVal.textContent = pValue.toFixed(4);
+
+    if (pValue <= 0.05 && diff > 0) {
+      verdict.className = "verdict-card verdict-launch";
+      verdict.textContent = "🎉 Statistically Significant! Safe to launch Variant B (p = " + pValue.toFixed(4) + ")";
+    } else if (diff <= 0) {
+      verdict.className = "verdict-card verdict-hold";
+      verdict.textContent = "❌ No Uplift! Variant B converts worse than control. Keep Variant A.";
+    } else {
+      verdict.className = "verdict-card verdict-hold";
+      verdict.textContent = "⚠️ Not Statistically Significant (p = " + pValue.toFixed(4) + " > 0.05). Do not launch yet!";
+    }
+  }
+
+  // Hook Up Listeners
+  sampleSlider.addEventListener('input', updateValues);
+  baselineSlider.addEventListener('input', updateValues);
+  observedSlider.addEventListener('input', updateValues);
+  simBtn.addEventListener('click', updateValues);
+
+  // Initialize
+  updateValues();
+</script>
+
+</body>
+</html>
